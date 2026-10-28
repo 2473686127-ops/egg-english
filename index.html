@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="referrer" content="no-referrer" />
 <!-- 安全基线：单文件离线运行，禁止任何外部连接、外链脚本与表单提交 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: https://dict.youdao.com https://fanyi.baidu.com; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" />
 <title>蛋仔英语大冒险 · 四年级双轨闯关</title>
 <style>
   :root{
@@ -848,7 +848,12 @@
       <button class="btn small ghost" onclick="setTtsMode('en',this)">只用英语语音</button>
       <button class="btn small ghost" onclick="setTtsMode('default',this)">只用系统默认</button>
     </div>
-    <div class="note" style="margin-top:0;">清空只会清掉<b>掌握度 / 错题 / 星星 / BOSS / 正确率 / 回炉进度</b>，金币和已解锁皮肤都保留。<br/>如果朗读测试听不到声音：换成 Chrome / Safari；安卓在「设置 → 文字转语音输出」下载英语语音包。</div>
+    <div class="sub" style="font-size:12px;color:var(--ink2);font-weight:800;margin:10px 0 2px;">在线发音（不依赖语音包，微信内也能出声）：</div>
+    <div class="row" id="audioModeRow">
+      <button class="btn small ghost" onclick="setAudioMode('auto',this)">在线优先（推荐）</button>
+      <button class="btn small ghost" onclick="setAudioMode('tts',this)">只用系统语音</button>
+    </div>
+    <div class="note" style="margin-top:0;">清空只会清掉<b>掌握度 / 错题 / 星星 / BOSS / 正确率 / 回炉进度</b>，金币和已解锁皮肤都保留。<br/>听不到声音时：先点上面「在线优先」，它联网就能发声，不需要装语音包。</div>
     <button class="btn" style="background:var(--bad)" onclick="askResetAll()">💣 全部重置（回到新手）</button>
 
     <h3 style="margin:18px 0 2px;">💾 备份存档 <span id="bk-count" style="font-size:13px;color:var(--ink2);"></span></h3>
@@ -6171,12 +6176,12 @@ function openGuide(){
   const steps = e.android
     ? '① 点右上角 <b>···</b><br/>② 选「<b>用其他应用打开</b>」<br/>③ 选 <b>Chrome / Edge / 夸克</b>（没有就先在应用商店装一个）'
     : '① 点右上角 <b>···</b><br/>② 选「<b>在浏览器中打开</b>」<br/>③ 用 <b>Safari</b> 打开';
-  askModal('要在浏览器里打开才能朗读',
+  askModal('微信里能听，但跟读要用浏览器',
     '<div style="line-height:1.9;font-size:14px;">'+
-    '当前是在'+(e.wechat?'微信':'QQ')+'里打开的，内置浏览器会关掉朗读和跟读，游戏会没声音。<br/><br/>'+
-    steps+'<br/><br/>'+
-    '文件还在聊天里的话：先在聊天里点开文件 → 选「保存到手机 / 用其他应用打开」→ 再用浏览器打开。<br/><br/>'+
-    '<b>跟读评分必须有 https 网址</b>；本地文件会自动改成「我已读完整」手动确认，不影响通关。'+
+    '朗读已经换成<b>在线发音</b>，在'+(e.wechat?'微信':'QQ')+'里点 🔊 也能听到声音。<br/><br/>'+
+    '但<b>跟读评分</b>需要麦克风，'+(e.wechat?'微信':'QQ')+'内置浏览器不开放，会自动改成「我已读完整」手动确认，不影响通关。<br/><br/>'+
+    '想要完整跟读评分：'+
+    steps+
     '</div>','我知道了',null);
 }
 function soundSelfTest(){
@@ -6188,17 +6193,19 @@ function soundSelfTest(){
     const v=vs.find(x=>/^en/i.test(x.lang)); if(v) en=v.name+' ('+v.lang+')';
   }catch(err){}
   const sr=!!(window.SpeechRecognition||window.webkitSpeechRecognition);
-  const sayOk=hasS && vn>0 && !isInAppBrowser();
+  const aMode=(state&&state.audioMode)||'auto';
+  const onlineOk=aMode!=='tts' && navigator.onLine!==false;
+  const sayOk=onlineOk || (hasS && vn>0 && !isInAppBrowser());
   const micOk=sr && e.https;
   askModal('朗读与麦克风自检',
     '<div style="font-size:13.5px;line-height:1.9">'+
     '打开方式：<b>'+(e.wechat?'微信内置':(e.qq?'QQ 内置':'普通浏览器'))+'</b><br/>'+
     '页面地址：<b>'+(e.file?'本地文件 file://':location.protocol+'//'+location.host)+'</b><br/>'+
-    '朗读接口：<b>'+(hasS?'有':'没有')+'</b>　语音数量：<b>'+vn+'</b>'+(en?('<br/>英语语音：<b>'+escapeHtml(en)+'</b>'):'')+'<br/>'+
-    '麦克风接口：<b>'+(sr?'有':'没有')+'</b>　评分可用：<b>'+(micOk?'可以':'不行（需 https 网址）')+'</b>'+
-    '<br/><br/>'+(sayOk&&micOk?'👍 环境正常，可以直接开始闯关。':
-      '👉 朗读：用 Chrome / Edge / Safari 打开，安卓再到「设置 → 系统 → 语言与输入法 → 文字转语音输出」装英语语音包。<br/>'+
-      '👉 跟读：本地文件或微信内无法调用麦克风时，会自动变成「我已读完整」手动确认，不会卡关。')+
+    '发音引擎：<b>'+(onlineOk?'在线发音':'系统语音')+'</b>　联网：<b>'+(navigator.onLine!==false?'有':'没有')+'</b><br/>'+
+    '系统语音：<b>'+(hasS?'有接口':'没有接口')+'</b>　语音数量：<b>'+vn+'</b>'+(en?('<br/>英语语音：<b>'+escapeHtml(en)+'</b>'):'')+'<br/>'+
+    '麦克风接口：<b>'+(sr?'有':'没有')+'</b>　跟读评分：<b>'+(micOk?'可以':'不行（微信内或非 https）')+'</b>'+
+    '<br/><br/>'+(sayOk?('👍 朗读可用：点任意 🔊 就有声音。'):'👉 朗读：到「记录与存档」点<b>在线优先</b>（需要联网）。')+
+    '<br/>'+(micOk?'👍 跟读评分可用。':'👉 跟读：会自动变成「我已读完整」手动确认，不影响通关。')+
     '</div>','知道了',null);
 }
 /* ---------------- TTS（朗读） ---------------- */
@@ -6286,6 +6293,20 @@ function syncTtsModeUI(){
   const idx={auto:0,en:1,'default':2}[m]||0;
   const bs=document.querySelectorAll('#ttsModeRow .btn');
   bs.forEach((b,i)=>{ b.classList.remove('purple'); b.classList.add('ghost'); if(i===idx){ b.classList.remove('ghost'); b.classList.add('purple'); } });
+  syncAudioModeUI();
+}
+/* 发音引擎：auto = 在线发音优先（微信内也能出声）；tts = 只用系统语音 */
+function syncAudioModeUI(){
+  const m=(state&&state.audioMode)||'auto';
+  const idx=(m==='tts')?1:0;
+  const bs=document.querySelectorAll('#audioModeRow .btn');
+  bs.forEach((b,i)=>{ b.classList.remove('purple'); b.classList.add('ghost'); if(i===idx){ b.classList.remove('ghost'); b.classList.add('purple'); } });
+}
+function setAudioMode(m,btn){
+  state.audioMode=m; saveState();
+  syncAudioModeUI(); onlineFail=0; stopAudio();
+  toast(m==='tts'?'已改用系统语音（需要装语音包）':'已启用在线发音，联网即可出声');
+  setTimeout(()=>ttsSelfTest(),250);
 }
 function setTtsMode(m,btn){
   state.ttsMode=m; saveState();
@@ -6294,42 +6315,36 @@ function setTtsMode(m,btn){
   toast('朗读方案：'+(m==='auto'?'自动':(m==='en'?'只用英语语音':'只用系统默认')));
   setTimeout(()=>ttsSelfTest(),300);
 }
-/* 存档页的朗读自检：绕过静音，直接试读一句，家长一听便知 */
+/* 存档页的朗读自检：走真实播放链路（在线发音 → 系统语音），家长一听便知 */
 function ttsSelfTest(){
   const wasMute=state.mute;
   state.mute=false;
-  ttsBroken=false;
-  let spoke=false;
-  try{
-    const u=new SpeechSynthesisUtterance('hello');
-    const v=pickVoice(); if(v) u.voice=v; u.lang=(v&&v.lang)||'en-US'; u.rate=0.85;
-    u.onstart=()=>{ spoke=true; toast('🔊 正在播放，听到就没问题！'); };
-    u.onend=()=>{ if(!spoke) toast('⚠️ 没有声音，看下方提示排查'); };
-    speechSynthesis.cancel();
-    setTimeout(()=>speechSynthesis.speak(u),100);
-    setTimeout(()=>{ if(!spoke && !speechSynthesis.speaking) toast('⚠️ 没有声音，看下方提示排查'); },1800);
-  }catch(e){ toast('⚠️ 本设备不支持朗读'); }
-  state.mute=wasMute;
+  toast('🔊 正在试读 hello…（' + (((state&&state.audioMode)||'auto')==='tts'?'系统语音':'在线发音优先') + '）');
+  speak('hello');
+  setTimeout(()=>{ state.mute=wasMute; }, 300);
   checkTtsHealth();
 }
 function checkTtsHealth(){
   const h=ttsHealth();
   const el=document.getElementById('ttsWarn');
+  const onlineOk=(((state&&state.audioMode)||'auto')!=='tts') && navigator.onLine!==false;
   if(el){
     const msg=document.getElementById('ttsWarnMsg');
     const e=envInfo();
     if(msg){
-      if(e.wechat||e.qq){
-        msg.innerHTML='⚠️ 现在是<b>'+(e.wechat?'微信':'QQ')+' 内打开</b>，朗读会被关掉。<br/>点右上角 <b>··· → 用其他应用打开 → 选 Chrome / Edge</b>';
+      if(onlineOk){
+        msg.innerHTML='✅ 已启用<b>在线发音</b>：点 🔊 就能听到标准英语，不需要装语音包。跟读评分仍建议用系统浏览器。';
+      } else if(e.wechat||e.qq){
+        msg.innerHTML='⚠️ 现在是<b>'+(e.wechat?'微信':'QQ')+' 内打开</b>，系统语音会被关掉。请到「记录与存档」点<b>在线优先</b>，或点右上角 ··· → 用其他应用打开。';
       } else if(h==='unsupported'){
-        msg.innerHTML='⚠️ 这个浏览器不支持朗读，请用 <b>Chrome / Edge / Safari</b> 打开本文件。';
+        msg.innerHTML='⚠️ 这个浏览器不支持系统语音，请到「记录与存档」点<b>在线优先</b>。';
       } else if(h==='novoice'){
-        msg.innerHTML='⚠️ 没装英语语音包，已自动改用系统默认语音（发音可能不标准）。<br/>安卓：设置 → 系统 → 语言与输入法 → 文字转语音输出，安装 <b>Google 文字转语音</b> 并下载英语语音。';
+        msg.innerHTML='⚠️ 没装英语语音包，系统语音会不标准。点「记录与存档 → 在线优先」可听到标准发音。';
       } else if(h==='broken'){
-        msg.innerHTML='⚠️ 浏览器有朗读接口但一直没出声，通常是微信/QQ 内置浏览器导致，请用系统浏览器打开。';
+        msg.innerHTML='⚠️ 系统语音没出声，点「记录与存档 → 在线优先」改用在线发音。';
       }
     }
-    el.style.display = (h==='ok' && !(e.wechat||e.qq))?'none':'block';
+    el.style.display = (onlineOk || (h==='ok' && !(e.wechat||e.qq)))?'none':'block';
   }
   return h;
 }
@@ -6340,6 +6355,16 @@ function fireSpeakEnd(tok){
   const cb=speakEndCb; speakEndCb=null;
   if(cb){ try{ cb(); }catch(e){} }
 }
+/* ---------------- 在线发音（有道 / 百度）：不依赖语音包，微信与安卓浏览器都能出声 ---------------- */
+const ONLINE_TTS=[
+  t=>'https://dict.youdao.com/dictvoice?type=2&audio='+encodeURIComponent(t),
+  t=>'https://fanyi.baidu.com/gettts?lan=en&spd=3&source=web&text='+encodeURIComponent(t)
+];
+let auEl=null, auTimer=null, onlineFail=0;
+function stopAudio(){
+  clearTimeout(auTimer);
+  try{ if(auEl){ auEl.onplaying=null; auEl.onended=null; auEl.onerror=null; auEl.pause(); auEl.removeAttribute('src'); } }catch(e){}
+}
 function speak(text, onEnd, src){
   const tok=++speakToken;
   speakEndCb=onEnd||null;
@@ -6348,12 +6373,46 @@ function speak(text, onEnd, src){
   const str=String(text);
   speakEndT=setTimeout(()=>fireSpeakEnd(tok), Math.min(15000, 5500 + str.length*120));
   if(state.mute){ toast('🔇 已经静音啦'); fireSpeakEnd(tok); return; }
-  if(!('speechSynthesis' in window)){ toast('本设备不支持朗读，试试用系统浏览器打开'); fireSpeakEnd(tok); return; }
-  try{
-    // 不直接 cancel（部分浏览器 cancel 后立即 speak 会失声）；先 resume 唤醒
-    if(speechSynthesis.paused) speechSynthesis.resume();
-  }catch(e){}
   flashSpeak(src);
+  stopAudio();
+  try{ if('speechSynthesis' in window && speechSynthesis.paused) speechSynthesis.resume(); }catch(e){}
+  // 音频方案：auto = 在线发音优先（微信内 / 没装语音包也能出声），失败自动退回系统语音；tts = 只用系统语音
+  const mode=(state&&state.audioMode)||'auto';
+  const canOnline = mode!=='tts' && !/[\u3400-\u9fff]/.test(str) && navigator.onLine!==false;
+  if(canOnline) tryOnline(str,tok,()=>speakTTS(str,tok));
+  else speakTTS(str,tok);
+}
+/* 在线发音：拿不到音频（断网 / 被墙 / 解码失败）就退回系统语音，避免“点了没反应” */
+function tryOnline(text, tok, onFail){
+  let idx=0, done=false, started=false, failed=false;
+  const finish=()=>{ if(done) return; done=true; speakBusy=false; fireSpeakEnd(tok); };
+  const fail=()=>{
+    if(failed || done || started) return;
+    if(idx<ONLINE_TTS.length-1){ idx++; attempt(); return; }
+    failed=true; done=true; onlineFail++;
+    if(onlineFail===3) toast('🌐 在线发音连不上，已改用系统语音');
+    stopAudio(); onFail();
+  };
+  const attempt=()=>{
+    if(done || tok!==speakToken) return;
+    stopAudio();
+    if(!auEl) auEl=new Audio();
+    const a=auEl;
+    a.setAttribute('playsinline',''); a.preload='auto';
+    a.onplaying=()=>{ started=true; speakBusy=true; onlineFail=0; clearTimeout(auTimer); };
+    a.onended=()=>finish();
+    a.onerror=()=>fail();
+    try{ a.src=ONLINE_TTS[idx](text); }catch(e){ fail(); return; }
+    let p=null;
+    try{ p=a.play(); }catch(e){ fail(); return; }
+    if(p&&p.catch) p.catch(()=>fail());
+    auTimer=setTimeout(()=>{ if(!started && !done && tok===speakToken) fail(); }, 2600);
+  };
+  attempt();
+}
+/* 系统语音：英语语音 → 默认引擎 → 中文引擎念英文，每档 1.6 秒没声就换 */
+function speakTTS(str, tok){
+  if(!('speechSynthesis' in window)){ toast('本设备不支持朗读，已尝试在线发音'); fireSpeakEnd(tok); return; }
   // 朗读方案：手机没装英语语音包时，自动退到「系统默认语音」（中文引擎也能念英文单词），
   // 每种方案 1.6 秒没出声就换下一种，避免出现「点了完全没反应」
   const mode=(state && state.ttsMode)||'auto';
