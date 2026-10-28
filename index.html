@@ -8345,21 +8345,22 @@ function wwPick(btn){
   if(!wwState || !btn) return;
   const i=+btn.dataset.i, st=wwState.items[i], card=document.getElementById('wwc'+i);
   if(!st || st.done) return;
-  st.done=true; wwState.done++;
-  if(card) card.classList.add('done');
   if(btn.dataset.t===st.meaning){
-    btn.classList.add('ok'); soundGood();
-    speak(st.cue);
+    btn.classList.add('ok');
+    st.done=true; wwState.done++;
+    if(card) card.classList.add('done');
+    soundGood(); speak(st.cue);
+    updateWwTitle();
+    if(wwState.done>=wwState.total){
+      setResultGate(false);
+      setTimeout(()=>toast('✅ 错词巩固完成，可以继续啦！'),300);
+    }
   } else {
+    // 选错不算过关：标红，并把正确的中文点亮，等孩子再点一次
     btn.classList.add('no');
     if(card) card.querySelectorAll('.ww-opt').forEach(b=>{ if(b.dataset.t===st.meaning) b.classList.add('ok'); });
-    toast('记住：'+st.word+' = '+st.meaning);
+    toast('再点一下绿色的正确意思：'+st.word+' = '+st.meaning);
     speak(st.cue);
-  }
-  updateWwTitle();
-  if(wwState.done>=wwState.total){
-    setResultGate(false);
-    setTimeout(()=>toast('✅ 错词巩固完成，可以继续啦！'),300);
   }
 }
 function setResultGate(locked){
