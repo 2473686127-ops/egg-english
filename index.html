@@ -6279,7 +6279,12 @@ function buildReport(){
     let w='', mn='';
     if(it.type==='vocab'){ w=it.word||''; mn=it.meaning||''; }
     else if(it.type==='sentence'){ w=it.en||''; mn=it.zh||'句子'; }
-    else if(it.type==='trap'){ w=it.correct||''; mn=it.reason||'易错句'; }
+    else if(it.type==='trap'){
+      // 个别 trap 把答案写在 wrong 字段（correct/reason 为空）：以 ✗ 为界拆成「句子 + 解析」
+      const seg=(it.wrong||'').split('✗');
+      w=it.correct||seg[0].split('；')[0].trim();
+      mn=it.reason||(seg[1]||'').replace(/^[\s:：]+/,'').trim()||'易错句';
+    }
     else if(it.type==='reply'){ w=it.a||it.q||''; mn=it.tip||'应答句'; }
     else { w=it.word||it.en||''; mn=it.meaning||it.zh||'知识点'; }
     if(!w) return null;
@@ -9082,7 +9087,13 @@ function goWrongBook(){
     let wrongTxt='', correctTxt='', reason='';
     if(it.type==='vocab'){ wrongTxt='？'; correctTxt=it.word+'（'+it.meaning+'）'; }
     else if(it.type==='sentence'){ wrongTxt='？'; correctTxt=it.en+' ＝ '+it.zh; }
-    else { wrongTxt=it.wrong; correctTxt=it.correct; reason=it.reason; }
+    else if(it.type==='reply'){ wrongTxt='？'; correctTxt=it.a||it.q||'—'; reason=it.tip||''; }
+    else if(it.type==='trap' && !it.correct){
+      // 个别 trap 的答案写在 wrong 字段（correct/reason 为空），以 ✗ 为界拆成「句子 + 解析」
+      const seg=(it.wrong||'').split('✗');
+      wrongTxt='？'; correctTxt=seg[0].split('；')[0].trim()||'—'; reason=(seg[1]||it.reason||'').replace(/^[\s:：]+/,'');
+    }
+    else { wrongTxt=it.wrong||'？'; correctTxt=it.correct||'—'; reason=it.reason||''; }
     d.innerHTML='<div class="wrong">'+escapeHtml(wrongTxt)+'</div>'+
       '<div class="correct">✅ '+escapeHtml(correctTxt)+'</div>'+
       (reason?'<div class="reason">'+escapeHtml(reason)+'</div>':'')+
