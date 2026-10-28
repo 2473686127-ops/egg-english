@@ -201,7 +201,7 @@
   .big-speak button:active{transform:translateY(4px);}
   .options{display:grid; grid-template-columns:1fr 1fr; gap:12px; width:100%; margin-top:12px;}
   .opt{
-    background:#f6f3ff; border:3px solid #ece6ff; border-radius:16px; padding:16px 8px; font-size:18px; font-weight:800;
+    background:#f6f3ff; border:3px solid #ece6ff; border-radius:16px; padding:16px 30px 16px 8px; font-size:18px; font-weight:800;
     cursor:pointer; transition:transform .08s; position:relative; color:var(--ink);
   }
   .opt:active{transform:scale(.95);}
@@ -213,7 +213,9 @@
     background:#08A6F6; color:#fff; font-size:9px; font-weight:900; padding:2px 8px; border-radius:999px; white-space:nowrap;
     box-shadow:0 2px 6px rgba(8,166,246,.4); animation:flagIn .22s cubic-bezier(.3,1.6,.5,1);}
   .opt.speaking .mini-speak{color:#08A6F6; font-weight:900;}
-  .opt .mini-speak{width:26px; height:26px; display:flex; align-items:center; justify-content:center; border-radius:8px;}
+  /* 小喇叭固定在右侧边缘：选项正中间留给「点选作答」，避免点到喇叭只放音不判题 */
+  .opt .mini-speak{position:absolute; right:3px; top:50%; transform:translateY(-50%);
+    width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:8px;}
   .opt .mini-speak:active{background:#d8f2ff;}
   .feedback{margin-top:12px; font-size:15px; font-weight:800; min-height:22px;}
   .feedback.good{color:var(--good);} .feedback.bad{color:var(--bad);}
@@ -330,7 +332,7 @@
     font-size:18px; font-weight:800; line-height:1.55; margin:10px 0 4px; color:#4a3b66;}
   .options.two{grid-template-columns:1fr 1fr;}
   .options.three{grid-template-columns:repeat(3,1fr);}
-  .options.three .opt{font-size:17px; padding:15px 4px;}
+  .options.three .opt{font-size:17px; padding:15px 28px 15px 4px;}
   .opt.judge{font-size:16px; gap:6px;}
 
   /* 句子积木 */
@@ -397,7 +399,7 @@
     .screen{padding:12px 12px 6px;}
     .btn{font-size:16px; padding:12px 14px;}
     .options{gap:9px;}
-    .opt{font-size:16px; padding:13px 6px;}
+    .opt{font-size:16px; padding:13px 26px 13px 6px;}
     .qprompt{font-size:18px;}
     .big-speak button{width:84px; height:84px; font-size:34px;}
     .qcard{padding:14px 12px;}
@@ -449,7 +451,7 @@
     .hearts{font-size:16px;}
     .qcard{padding:12px 12px; min-height:0;}
     .qprompt{font-size:17px; margin-top:4px;}
-    .opt{min-height:44px; padding:10px 8px; font-size:16px;}
+    .opt{min-height:44px; padding:10px 26px 10px 8px; font-size:16px;}
     .big-speak button{width:64px; height:64px; font-size:27px;}
     .rule-strip{padding:6px 9px; margin-bottom:6px;}
     .rule-strip .rt, .rule-strip>span:last-child{font-size:11.5px; line-height:1.5;}
@@ -8305,15 +8307,10 @@ function finishRun(){
 /* ---------- 结算页：本关错词巩固（最多 3 个，选对中文才算过关） ---------- */
 let wwState=null;
 function pickWrongWords(){
+  // 只看「本关」答错的单词：本关没答错就不出现卡片，也不拦返回按钮
   const ids=(run&&run.wrongIds)||[];
-  let items=ids.map(itemById).filter(i=>i&&i.type==='vocab');
-  items=items.filter((v,i)=>items.findIndex(x=>x.word===v.word)===i);
-  if(items.length<3){
-    const extra=Object.keys(state.wrong||{}).map(itemById)
-      .filter(i=>i&&i.type==='vocab'&&items.indexOf(i)<0);
-    items=items.concat(extra.filter((v,i,arr)=>arr.findIndex(x=>x.word===v.word)===i));
-  }
-  return items.slice(0,3);
+  const items=ids.map(itemById).filter(i=>i&&i.type==='vocab');
+  return items.filter((v,i)=>items.findIndex(x=>x.word===v.word)===i).slice(0,3);
 }
 function renderWrongWords(){
   const box=document.getElementById('wrongWordBox');
