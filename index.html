@@ -44,6 +44,7 @@
   .btn.purple{background:var(--purple);} .btn.orange{background:var(--orange); color:#6b3b00;}
   .btn.ghost{background:#fff; color:var(--ink); box-shadow:var(--shadow);}
   .btn.small{padding:10px 14px; font-size:15px; width:auto; margin:4px;}
+  .btn.locked-btn{opacity:.55; filter:grayscale(.55); box-shadow:none;}
   .row{display:flex; gap:10px; flex-wrap:wrap;}
   .row .btn{flex:1;}
 
@@ -622,7 +623,7 @@
       <span id="ttsWarnMsg">⚠️ 当前浏览器没检测到英语语音包，朗读可能无声。<br/>
       建议用 <b>Chrome / Edge / Safari</b> 打开；安卓手机请到「设置 → 系统 → 语言与输入法 → 文字转语音输出」下载英语语音。</span>
     </div>
-    <div class="note">玩法：答对一题蛋仔前滚一格，连对有氮气加速 🔥<br/>答错掉坑扣一颗心 ❤️ 每关 20 题，含 <b>4 道爆炸题 💣</b>（主线最后一关 8 道）。<br/>爆炸题答错 1 道，本关立即失败；须回炉前 3 关且每关 <b>100%</b> 全对，才能回来。<br/>每关正确率 <b>≥95%</b> 才解锁下一关。<br/>题型：听音选词 / 词义匹配 / 拼写 / 跟读 🔤<br/>还有：排雷 / 应答句 / 间隔复习。<br/>主线第 5/10/15/20 关是 BOSS 关！</div>
+    <div class="note">玩法：答对一题蛋仔前滚一格，连对有氮气加速 🔥<br/>答错掉坑扣一颗心 ❤️ 每关 20 题，含 <b>4 道爆炸题 💣</b>（主线最后一关 8 道）。<br/>爆炸题答错 1 道，本关立即失败；须回炉前 3 关且每关 <b>100%</b> 全对，才能回来。<br/>每关正确率 <b>≥95%</b> 才能开始下一关冲刺（关卡不隐藏，随时可进去预习知识点）。<br/>每关必含：听 🔊 / 说 🎤 / 读 📖 / 写 ✍️ 四类题型<br/>还有：排雷 / 应答句 / 间隔复习。<br/>主线第 5/10/15/20 关是 BOSS 关！</div>
   </section>
 
   <!-- LAB · 语法实验室 / 写作工坊 -->
@@ -648,7 +649,7 @@
       <div class="pill">⭐ <span id="map-stars">0</span> · 🪙 <span id="map-coins">0</span></div>
     </div>
     <h2 style="text-align:center; margin:6px 0 2px;">蛋仔岛 · 赛道地图</h2>
-    <div class="sub" id="mapSub" style="text-align:center; color:var(--ink2); font-weight:700; font-size:13px;">主线 22 关 · 每关正确率 ≥95% 解锁下一关 · 4 道爆炸题（终关 8 道）</div>
+    <div class="sub" id="mapSub" style="text-align:center; color:var(--ink2); font-weight:700; font-size:13px;">主线 22 关 · 关卡全开放可预习 · 前关 ≥95% 才能冲刺 · 4 道爆炸题（终关 8 道）</div>
     <div class="map-tabs" id="mapTabs">
       <button class="map-tab" id="tabMain" onclick="setMapTrack('main')">🍬 主线赛道</button>
       <button class="map-tab" id="tabExam" onclick="setMapTrack('exam')">📘 4A 真题赛道</button>
@@ -661,8 +662,9 @@
   <section id="screen-study" class="screen">
     <div class="topbar">
       <button class="back-btn" onclick="goMap()">← 地图</button>
-      <button class="btn small ghost" onclick="startUnit(currentP)">🏁 开始冲刺</button>
+      <button class="btn small ghost" id="studyStart" onclick="startUnit(currentP)">🏁 开始冲刺</button>
     </div>
+    <div id="studyGate" class="note" style="display:none; margin:0 0 6px;"></div>
     <h2 id="study-title" style="text-align:center; margin:4px 0;"></h2>
     <div class="sub" style="text-align:center; color:var(--ink2); font-weight:700; font-size:12px;">点任意卡片听发音</div>
     <div class="study-meta" id="studyMeta"></div>
@@ -7281,7 +7283,7 @@ function buildMockQuestions(u, source){
     const rest=shuffle(pool.filter(i=>picked.indexOf(i)<0));
     picked=picked.concat(rest.slice(0,20-picked.length));
   }
-  return markBoomQuestions(buildQuestionList(shuffle(picked), {forceKind:null}, 20), 4);
+  return markBoomQuestions(buildQuestionList(shuffle(ensureFourSkills(picked)), {forceKind:null}, 20), 4);
 }
 function padUnitPool(pool, need){
   const out=[];
@@ -7301,6 +7303,33 @@ function padUnitPool(pool, need){
     k++;
   }
   return out.slice(0,need);
+}
+/* 听说读写全覆盖：每关至少 1 道听力、1 道阅读、1 道拼写、1 道跟读。
+   只改本关这份拷贝，不动全局题库 */
+function ensureFourSkills(pool){
+  if(!pool || !pool.length) return pool;
+  const out=pool.map(it=>Object.assign({},it));
+  const has={};
+  out.forEach(i=>{ if(i._mode) has[i._mode]=true; });
+  const sCount=out.filter(i=>i.type==='sentence').length;
+  if(sCount>=2){ has.say=true; has['read-zh']=true; }
+  else if(sCount===1){ has['read-zh']=true; }
+  const miss=[];
+  if(!has.listen) miss.push('listen');
+  if(!(has.read||has['read-zh'])) miss.push('read');
+  if(!has.spell) miss.push('spell');
+  if(!has.say) miss.push('say');
+  if(!miss.length) return out;
+  const free=shuffle(out.filter(i=>i.type==='vocab' && !i._mode));
+  miss.forEach(k=>{
+    const it=free.shift();
+    if(it){ it._mode=k; return; }
+    if(k==='say'){
+      const s=out.find(x=>x.type==='sentence' && !x._mode);
+      if(s) s._mode='say';
+    }
+  });
+  return out;
 }
 function buildQuestions(source){
   let pool=[];
@@ -7331,7 +7360,7 @@ function buildQuestions(source){
   } else if(source.kind==='review'){ pool=dueItems(); cap=15; }
   else if(source.kind==='wrong'){ pool=source.ids.map(itemById).filter(Boolean); cap=12; }
   else if(source.kind==='practice'){ pool=source.pool||[]; cap=12; }
-  pool=shuffle(pool);
+  pool=shuffle(ensureFourSkills(pool));
   const qs=buildQuestionList(pool, source, cap);
   // 正式关卡（含真题关、回炉关）设置爆炸题：主线最后一关 8 道，其余 4 道
   if(source.kind==='unit'){
@@ -8458,10 +8487,22 @@ function buildMap(){
 }
 function openUnit(p){
   const lock=stageLockReason(p);
-  if(lock){ toast(lock); return; }
   currentP=p; currentUnit=PLAYABLE[p];
   const u=GAME_DATA[currentUnit];
   document.getElementById('study-title').textContent=u.title;
+  /* 关卡不设隐藏：任何时候都能进来先看知识点、先听发音；只有「开始冲刺」受前一关 95% 门禁约束 */
+  const startBtn=document.getElementById('studyStart');
+  const gate=document.getElementById('studyGate');
+  if(startBtn){
+    if(lock){ startBtn.classList.add('locked-btn'); startBtn.textContent='🔒 暂不可冲刺'; }
+    else{ startBtn.classList.remove('locked-btn'); startBtn.textContent='🏁 开始冲刺'; }
+  }
+  if(gate){
+    if(lock){
+      gate.style.display='';
+      gate.innerHTML='🔒 <b>本关知识可以先学</b>：'+escapeHtml(lock)+'。<br/>把下面的单词和问答听熟、读熟，通关后就能直接冲。';
+    } else { gate.style.display='none'; gate.innerHTML=''; }
+  }
   const meta=document.getElementById('studyMeta');
   const sm=supplementMeta(currentUnit);
   if(meta){
