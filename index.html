@@ -6275,7 +6275,15 @@ function buildReport(){
   const wrongs=Object.keys(state.wrong||{}).map(id=>{
     const it=itemById(id), m=getM(id);
     if(!it) return null;
-    return {word:(it.word||it.en||''), meaning:(it.meaning||it.zh||'句子'), times:(m&&m.wrong)||1, at:(state.wrong[id]&&state.wrong[id].at)||0};
+    // 不同题型字段不同：单词 word/meaning、句子 en/zh、排雷 correct/reason、应答 a/tip
+    let w='', mn='';
+    if(it.type==='vocab'){ w=it.word||''; mn=it.meaning||''; }
+    else if(it.type==='sentence'){ w=it.en||''; mn=it.zh||'句子'; }
+    else if(it.type==='trap'){ w=it.correct||''; mn=it.reason||'易错句'; }
+    else if(it.type==='reply'){ w=it.a||it.q||''; mn=it.tip||'应答句'; }
+    else { w=it.word||it.en||''; mn=it.meaning||it.zh||'知识点'; }
+    if(!w) return null;
+    return {word:w, meaning:mn, times:(m&&m.wrong)||1, at:(state.wrong[id]&&state.wrong[id].at)||0};
   }).filter(Boolean);
   wrongs.sort((a,b)=>(b.times-a.times)||(b.at-a.at));
   const due=summarize().due;
