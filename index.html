@@ -262,6 +262,24 @@
   .data-grid .di b{display:block; font-size:20px; color:var(--ink); line-height:1.15;}
   .data-grid .di span{font-size:11px; color:var(--ink2); font-weight:800;}
   .data-last{margin-top:10px; text-align:center; font-size:12px; font-weight:800; color:var(--ink2);}
+  /* 家长周报 */
+  .rp-wrap{background:#fff; border-radius:20px; padding:14px; box-shadow:var(--shadow); margin-top:10px;}
+  .rp-h{font-size:19px; font-weight:900;}
+  .rp-sub{font-size:12px; font-weight:800; color:var(--ink2); margin-top:2px;}
+  .rp-kpi{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px;}
+  .rp-kpi div{background:#f4f9ff; border-radius:14px; padding:10px 4px; text-align:center;}
+  .rp-kpi b{display:block; font-size:21px; font-weight:900; line-height:1.2;}
+  .rp-kpi span{font-size:11px; font-weight:800; color:var(--ink2);}
+  .rp-sec{margin-top:14px;}
+  .rp-sec h4{margin:0 0 6px; font-size:14px; font-weight:900;}
+  .rp-bars{display:flex; gap:6px; align-items:flex-end; height:86px;}
+  .rp-bars .b{flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:3px; min-width:0;}
+  .rp-bars .b b{font-size:10px; font-weight:900; color:#4a3b66; line-height:1;}
+  .rp-bars .b i{display:block; width:66%; border-radius:6px 6px 3px 3px; background:linear-gradient(180deg,#7fd8ff,#4fc3f7);}
+  .rp-bars .b em{font-style:normal; font-size:10px; font-weight:900; color:var(--ink2); line-height:1.2;}
+  .rp-line{font-size:13px; font-weight:800; color:#4a3b66; padding:7px 9px; border-radius:10px; background:#faf8ff; margin-top:6px; line-height:1.5;}
+  .rp-tip{font-size:13px; font-weight:800; color:#7a4a00; background:#fff8e6; border-radius:12px; padding:10px 12px; margin-top:12px; line-height:1.65;}
+  #reportImg{display:block; width:100%; border-radius:16px; box-shadow:var(--shadow); margin-top:10px;}
   .bk-item{background:#fff; border-radius:16px; padding:10px 12px; margin:8px 0; box-shadow:var(--shadow);
     display:flex; align-items:center; gap:10px;}
   .bk-item .bk-main{flex:1; min-width:0;}
@@ -862,6 +880,7 @@
       · 参考文章：https://mp.weixin.qq.com/s/nQzWyiVTQV_7wA7Vs5OSww<br>
       · 本工具是离线学习辅助，不是教材或试卷官方电子版。</div>
 
+    <button class="btn purple" onclick="goReport()">📊 家长周报（可发微信）</button>
     <button class="btn blue" onclick="backupNow()">📦 备份现在这份记录</button>
     <button class="btn green" onclick="askClearPractice()">🧹 清空练习记录</button>
     <button class="btn yellow" onclick="ttsSelfTest()">🔊 朗读测试：听一句 hello</button>
@@ -882,6 +901,22 @@
     <h3 style="margin:18px 0 2px;">💾 备份存档 <span id="bk-count" style="font-size:13px;color:var(--ink2);"></span></h3>
     <div class="sub" style="font-size:12px; color:var(--ink2); font-weight:700;">点「恢复」就把记录还原到那一刻（恢复前也会自动备份）</div>
     <div id="bkList"></div>
+  </section>
+
+  <section id="screen-report" class="screen">
+    <div class="topbar">
+      <button class="back-btn" onclick="goData()">← 记录</button>
+      <div class="pill">📊 周报</div>
+    </div>
+    <h2 style="text-align:center;">📊 家长周报</h2>
+    <div class="sub" style="text-align:center;color:var(--ink2);font-weight:700;font-size:12px;">最近 7 天 · 数据只存在这台设备上</div>
+    <div id="reportBody"></div>
+    <img id="reportImg" alt="家长周报图片">
+    <div class="row" style="margin-top:12px;">
+      <button class="btn green small" style="flex:1;" onclick="copyReportText()">📋 复制文字版</button>
+      <button class="btn blue small" style="flex:1;" onclick="saveReportImage()">💾 保存图片</button>
+    </div>
+    <div class="note">微信里长按上面的图片即可保存或转发；「复制文字版」可以直接粘贴到聊天框。</div>
   </section>
 </div>
 
@@ -5987,7 +6022,7 @@ function wpnFor(color){ const s=skinMeta(color); return s?s.wpn:null; }
 
 /* ---------------- 存储 ---------------- */
 const LS_KEY='eggy_state_v1';
-const DEFAULT_STATE=()=>({coins:0, stars:{}, acc:{}, ko:{}, mastery:{}, wrong:{}, lab:{}, ownedSkins:['yellow'], skin:'yellow', mute:false, lastPlay:0, repair:null, supplements:[]});
+const DEFAULT_STATE=()=>({coins:0, stars:{}, acc:{}, ko:{}, mastery:{}, wrong:{}, lab:{}, ownedSkins:['yellow'], skin:'yellow', mute:false, lastPlay:0, repair:null, supplements:[], daily:{}});
 let state=loadState();
 function loadState(){
   let d=DEFAULT_STATE();
@@ -6007,6 +6042,8 @@ function loadState(){
       if(!Array.isArray(d.supplements)) d.supplements=[];
       // 校验补充资料结构，丢弃损坏条目
       d.supplements=d.supplements.filter(s=>s&&typeof s==='object'&&typeof s.id==='string'&&typeof s.target==='number'&&typeof s.type==='string'&&s.data);
+      // 老存档没有每日统计：补上空对象，周报从今天开始累积
+      if(!d.daily||typeof d.daily!=='object'||Array.isArray(d.daily)) d.daily={};
     }
   }catch(e){}
   return d;
@@ -6016,6 +6053,38 @@ function totalStars(){
        + Object.values(state.lab||{}).reduce((a,b)=>a+((b&&b.stars)||0),0);
 }
 function saveState(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+
+/* ---------------- 每日统计（家长周报的数据来源） ----------------
+   daily: { '2026-10-28': { a:答题数, r:答对数, c:当天金币, ids:{单词id:1}, u:[{n:关卡名, acc:正确率, stars:星}] } } */
+function dayKey(ts){
+  const d=new Date(ts||Date.now()), p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+function dailyRec(key){
+  if(!state.daily||typeof state.daily!=='object') state.daily={};
+  const k=key||dayKey();
+  if(!state.daily[k]) state.daily[k]={a:0,r:0,c:0,ids:{},u:[]};
+  const r=state.daily[k];
+  if(!r.ids||typeof r.ids!=='object') r.ids={};
+  if(!Array.isArray(r.u)) r.u=[];
+  return r;
+}
+function trackAnswer(correct, itemId){
+  const r=dailyRec();
+  r.a++; if(correct) r.r++;
+  if(itemId) r.ids[itemId]=1;
+  saveState();
+}
+function trackCoins(n){
+  if(!n) return;
+  dailyRec().c+=n;
+}
+function trackUnit(name, acc, stars){
+  if(!name) return;
+  const r=dailyRec(), e=r.u.find(x=>x.n===name);
+  if(e){ e.acc=Math.max(e.acc,acc); e.stars=Math.max(e.stars||0,stars||0); }
+  else r.u.push({n:name, acc:acc, stars:stars||0});
+}
 
 /* ---------------- 存档 / 清空 / 恢复 ---------------- */
 const BK_KEY='eggy_backups_v1';
@@ -6093,7 +6162,7 @@ function askClearPractice(){
     '<div style="margin-top:8px; font-size:13px;">清空前会自动备份，之后可以在下面点「恢复」找回来。</div>', '清空', ()=>{
       backupNow('清空前');
       state.stars={}; state.ko={}; state.mastery={}; state.wrong={}; state.lab={}; state.lastPlay=0;
-      state.acc={}; state.repair=null;
+      state.acc={}; state.repair=null; state.daily={};
       saveState(); refreshHud(); goData();
       toast('练习记录已清空，可在下面恢复');
     }, true);
@@ -6177,6 +6246,233 @@ function renderBackups(){
     };
     box.appendChild(d);
   });
+}
+
+/* ---------------- 家长周报（最近 7 天，可复制文字 / 存成图片） ---------------- */
+let lastReport=null, lastReportImg='';
+function buildReport(){
+  const now=Date.now(), WD='日一二三四五六';
+  const days=[];
+  for(let i=6;i>=0;i--){
+    const ts=now-i*86400000, d=new Date(ts), key=dayKey(ts);
+    const r=(state.daily||{})[key]||null;
+    days.push({key:key, label:'周'+WD[d.getDay()], date:(d.getMonth()+1)+'/'+d.getDate(),
+      a:(r&&r.a)||0, r:(r&&r.r)||0, c:(r&&r.c)||0, ids:(r&&r.ids)||{}, u:(r&&r.u)||[]});
+  }
+  const totalA=days.reduce((s,x)=>s+x.a,0), totalR=days.reduce((s,x)=>s+x.r,0), coins=days.reduce((s,x)=>s+x.c,0);
+  const active=days.filter(x=>x.a>0).length;
+  const acc=totalA?Math.round(100*totalR/totalA):0;
+  const idSet={}; days.forEach(x=>Object.keys(x.ids).forEach(k=>{ idSet[k]=1; }));
+  const words=Object.keys(idSet).map(itemById).filter(Boolean);
+  const mastered=words.filter(it=>{ const m=getM(it.id); return m && m.box>=3; }).length;
+  const units=[];
+  days.forEach(x=>x.u.forEach(u=>{
+    const e=units.find(y=>y.n===u.n);
+    if(e){ e.acc=Math.max(e.acc,u.acc||0); e.stars=Math.max(e.stars||0,u.stars||0); }
+    else units.push({n:u.n, acc:u.acc||0, stars:u.stars||0});
+  }));
+  units.sort((a,b)=>b.acc-a.acc);
+  const wrongs=Object.keys(state.wrong||{}).map(id=>{
+    const it=itemById(id), m=getM(id);
+    return it?{word:it.word, meaning:it.meaning, times:(m&&m.wrong)||1, at:(state.wrong[id]&&state.wrong[id].at)||0}:null;
+  }).filter(Boolean);
+  wrongs.sort((a,b)=>(b.times-a.times)||(b.at-a.at));
+  const due=summarize().due;
+  const d0=new Date(days[0].key.replace(/-/g,'/')), d1=new Date(days[6].key.replace(/-/g,'/'));
+  const range=(d0.getMonth()+1)+'月'+d0.getDate()+'日 — '+(d1.getMonth()+1)+'月'+d1.getDate()+'日';
+  let advice;
+  if(!totalA) advice='本周还没有练习记录。建议从第 1 关开始，每天 10 分钟：先连听 2 遍预习页单词，再开始冲刺。';
+  else if(acc>=90) advice='正确率 '+acc+'%，很稳。可以挑战下一关或真题赛道；每天保持一次听读，防止生词回生。';
+  else if(acc>=75) advice='正确率不错，但还没到 95% 解锁线。重点练结算页的错词卡，再把本关重跑一次，通常就能过关。';
+  else advice='正确率偏低，建议放慢节奏：每次只练 1 关，先连听 2 遍单词、遮住中文自测，再开始冲刺。';
+  if(wrongs.length) advice+=' 优先复习：'+wrongs.slice(0,3).map(w=>w.word).join('、')+'。';
+  return {days:days, range:range, totalA:totalA, totalR:totalR, acc:acc, active:active, coins:coins,
+    mastered:mastered, words:words.length, units:units, wrongs:wrongs.slice(0,5), due:due, advice:advice, at:now};
+}
+function reportText(rp){
+  const L=[];
+  L.push('蛋仔英语大冒险 · 家长周报');
+  L.push('时间：'+rp.range);
+  L.push('练习 '+rp.active+' 天 · 答题 '+rp.totalA+' 题 · 正确率 '+rp.acc+'%');
+  L.push('本周练到 '+rp.words+' 个知识点，已掌握 '+rp.mastered+' 个 · 金币 +'+rp.coins+' · 待复习 '+rp.due+' 条');
+  L.push('');
+  L.push('每日答题：'+rp.days.map(d=>d.label+' '+d.a+' 题').join(' ｜ '));
+  L.push('');
+  L.push('本周闯关：');
+  if(rp.units.length) rp.units.slice(0,8).forEach(u=>L.push('· '+u.n+' 正确率 '+u.acc+'%'+(u.stars?'  '+'★'.repeat(Math.max(0,Math.min(3,u.stars))):'')));
+  else L.push('· 本周还没有完成闯关');
+  L.push('');
+  L.push('错词本（按累计错次排序）：');
+  if(rp.wrongs.length) rp.wrongs.forEach(w=>L.push('· '+w.word+' = '+w.meaning+'（累计错 '+w.times+' 次）'));
+  else L.push('· 没有错词，继续保持！');
+  L.push('');
+  L.push('建议：'+rp.advice);
+  L.push('');
+  L.push('（数据来自本机离线存档，未上传服务器）');
+  return L.join('\n');
+}
+function goReport(){
+  lastReport=buildReport();
+  renderReportHtml(lastReport);
+  lastReportImg='';
+  try{ lastReportImg=reportImage(lastReport); }catch(e){}
+  const img=document.getElementById('reportImg');
+  if(img){ if(lastReportImg){ img.style.display=''; img.src=lastReportImg; } else img.style.display='none'; }
+  show('screen-report');
+}
+function renderReportHtml(rp){
+  const box=document.getElementById('reportBody'); if(!box) return;
+  const maxA=Math.max.apply(null, rp.days.map(d=>d.a).concat([1]));
+  const bars=rp.days.map(d=>'<div class="b"><b>'+(d.a||'')+'</b>'+
+    '<i style="height:'+(d.a?Math.max(6,Math.round(64*d.a/maxA)):3)+'px;"></i><em>'+d.label+'</em></div>').join('');
+  const units=rp.units.length
+    ? rp.units.slice(0,6).map(u=>'<div class="rp-line">'+escapeHtml(u.n)+' · 正确率 '+u.acc+'%'+(u.stars?' '+('★'.repeat(Math.max(0,Math.min(3,u.stars)))):'')+'</div>').join('')
+      +(rp.units.length>6?'<div class="rp-line">… 本周共完成 '+rp.units.length+' 关</div>':'')
+    : '<div class="rp-line">本周还没有完成闯关</div>';
+  const wrongs=rp.wrongs.length
+    ? rp.wrongs.map(w=>'<div class="rp-line">✖ '+escapeHtml(w.word)+' · '+escapeHtml(w.meaning)+'（累计错 '+w.times+' 次）</div>').join('')
+    : '<div class="rp-line">没有错词，继续保持！</div>';
+  box.innerHTML='<div class="rp-wrap">'+
+    '<div class="rp-h">'+rp.range+'</div>'+
+    '<div class="rp-sub">最近 7 天 · 蛋仔英语大冒险</div>'+
+    '<div class="rp-kpi">'+
+      '<div><b>'+rp.active+'</b><span>练习天数</span></div>'+
+      '<div><b>'+rp.totalA+'</b><span>答题总数</span></div>'+
+      '<div><b>'+rp.acc+'%</b><span>正确率</span></div>'+
+      '<div><b>+'+rp.coins+'</b><span>本周金币</span></div>'+
+    '</div>'+
+    '<div class="rp-sec"><h4>📅 每日答题</h4><div class="rp-bars">'+bars+'</div></div>'+
+    '<div class="rp-sec"><h4>🏁 本周闯关</h4>'+units+'</div>'+
+    '<div class="rp-sec"><h4>✖ 错词本 Top '+rp.wrongs.length+'（累计错次）</h4>'+wrongs+'</div>'+
+    '<div class="rp-sec"><h4>📌 词汇与复习</h4>'+
+      '<div class="rp-line">练到 '+rp.words+' 个知识点 · 已掌握 '+rp.mastered+' 个 · 待复习 '+rp.due+' 条</div></div>'+
+    '<div class="rp-tip">💡 '+escapeHtml(rp.advice)+'</div>'+
+  '</div>';
+}
+function copyReportText(){
+  if(!lastReport){ toast('周报还没生成好'); return; }
+  const t=reportText(lastReport);
+  const done=()=>toast('📋 已复制，去微信粘贴给家长');
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(done).catch(()=>fallbackCopy(t,done));
+  } else fallbackCopy(t,done);
+}
+function fallbackCopy(t,cb){
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=t; ta.style.position='fixed'; ta.style.left='-9999px'; ta.style.top='0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta); cb();
+  }catch(e){ toast('复制失败：可以长按图片保存'); }
+}
+function saveReportImage(){
+  if(!lastReportImg){ toast('图片还没生成，请返回再进一次'); return; }
+  const a=document.createElement('a');
+  a.href=lastReportImg; a.download='蛋仔英语周报_'+dayKey()+'.png';
+  document.body.appendChild(a); a.click(); a.remove();
+  toast(isInAppBrowser()?'微信里请长按图片保存':'已保存到你设备的下载文件夹');
+}
+/* 画成一张可以直接发微信的图片 */
+function reportImage(rp){
+  const probe=document.createElement('canvas'); probe.width=750; probe.height=2600;
+  const bottom=paintReport(probe, rp);
+  const out=document.createElement('canvas'); out.width=750; out.height=Math.max(560, Math.ceil(bottom));
+  paintReport(out, rp);
+  return out.toDataURL('image/png');
+}
+function paintReport(cv, rp){
+  const W=750, PAD=36, X=0, ctx=cv.getContext('2d');
+  const F=(sz,w)=>((w||'700')+' '+sz+'px "PingFang SC","Microsoft YaHei",system-ui,sans-serif');
+  const rrect=(x,y,w,h,r)=>{ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); };
+  const fit=(t,maxW,font)=>{ ctx.font=font; if(ctx.measureText(t).width<=maxW) return t; let s=String(t); while(s.length>1&&ctx.measureText(s+'…').width>maxW) s=s.slice(0,-1); return s+'…'; };
+  const wrap=(t,maxW,font)=>{ ctx.font=font; const out=[]; let line=''; String(t).split('').forEach(ch=>{ if(ctx.measureText(line+ch).width>maxW&&line){ out.push(line); line=ch; } else line+=ch; }); if(line) out.push(line); return out; };
+  // 背景 + 顶部色带 + 白色正文
+  let g=ctx.createLinearGradient(0,0,0,cv.height); g.addColorStop(0,'#f2f8ff'); g.addColorStop(1,'#fff7fb');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,cv.height);
+  g=ctx.createLinearGradient(0,0,W,150); g.addColorStop(0,'#48bdf0'); g.addColorStop(1,'#ff8fbf');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,150);
+  ctx.fillStyle='#ffffff'; ctx.fillRect(0,150,W,cv.height-150);
+  // 标题
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  ctx.fillStyle='#ffffff'; ctx.font=F(36,'900');
+  ctx.fillText('蛋仔英语大冒险 · 家长周报', PAD, 70);
+  ctx.font=F(22,'700'); ctx.globalAlpha=.95;
+  ctx.fillText(rp.range+' · 最近 7 天', PAD, 112);
+  ctx.globalAlpha=1;
+  let y=150+46;
+  // 四个关键指标
+  const tw=(W-2*PAD-36)/4, th=104;
+  const kpi=[[rp.active+' 天','练习天数'],[rp.totalA+' 题','答题总数'],[rp.acc+'%','正确率'],['+'+rp.coins,'本周金币']];
+  kpi.forEach((k,i)=>{
+    const x=PAD+i*(tw+12);
+    rrect(x,y,tw,th,18); ctx.fillStyle='#f4f9ff'; ctx.fill();
+    ctx.textAlign='center'; ctx.fillStyle='#2b2340'; ctx.font=F(32,'900');
+    ctx.fillText(k[0], x+tw/2, y+48);
+    ctx.fillStyle='#7a6b8d'; ctx.font=F(18,'700');
+    ctx.fillText(k[1], x+tw/2, y+82);
+  });
+  ctx.textAlign='left';
+  y+=th+46;
+  // 每日答题柱状图
+  ctx.fillStyle='#2b2340'; ctx.font=F(24,'900'); ctx.fillText('📅 每日答题', PAD, y);
+  const cTop=y+26, cH=100, slot=(W-2*PAD)/7, base=cTop+cH;
+  const maxA=Math.max.apply(null, rp.days.map(d=>d.a).concat([1]));
+  rp.days.forEach((d,i)=>{
+    const cx=PAD+slot*i+slot/2, bw=44;
+    const bh=d.a?Math.max(8, Math.round(cH*d.a/maxA)):3;
+    rrect(cx-bw/2, base-bh, bw, bh, 8);
+    ctx.fillStyle=d.a?'#5cc6f2':'#e6e6f0'; ctx.fill();
+    ctx.textAlign='center';
+    if(d.a){ ctx.fillStyle='#2b2340'; ctx.font=F(17,'900'); ctx.fillText(String(d.a), cx, base-bh-9); }
+    ctx.fillStyle='#7a6b8d'; ctx.font=F(16,'700'); ctx.fillText(d.label, cx, base+24);
+  });
+  ctx.textAlign='left';
+  y=base+20+46;
+  // 本周闯关
+  ctx.fillStyle='#2b2340'; ctx.font=F(24,'900'); ctx.fillText('🏁 本周闯关', PAD, y);
+  y+=34;
+  const unitMax=W-2*PAD;
+  if(rp.units.length){
+    rp.units.slice(0,6).forEach(u=>{
+      const stars=u.stars?(' '+'★'.repeat(Math.max(0,Math.min(3,u.stars)))):'';
+      const txt=fit('· '+u.n+' · 正确率 '+u.acc+'%'+stars, unitMax, F(20,'700'));
+      ctx.fillStyle='#4a3b66'; ctx.font=F(20,'700'); ctx.fillText(txt, PAD, y);
+      y+=34;
+    });
+    if(rp.units.length>6){ ctx.fillStyle='#9a92aa'; ctx.font=F(18,'700'); ctx.fillText('… 本周共完成 '+rp.units.length+' 关', PAD, y); y+=32; }
+  } else {
+    ctx.fillStyle='#9a92aa'; ctx.font=F(20,'700'); ctx.fillText('本周还没有完成闯关', PAD, y); y+=34;
+  }
+  y+=22;
+  // 本周错词
+  ctx.fillStyle='#2b2340'; ctx.font=F(24,'900'); ctx.fillText('✖ 错词本 Top '+rp.wrongs.length+'（累计错次）', PAD, y);
+  y+=34;
+  if(rp.wrongs.length){
+    rp.wrongs.forEach(w=>{
+      const txt=fit('· '+w.word+' · '+w.meaning+'（累计错 '+w.times+' 次）', unitMax, F(20,'700'));
+      ctx.fillStyle='#4a3b66'; ctx.font=F(20,'700'); ctx.fillText(txt, PAD, y);
+      y+=34;
+    });
+  } else {
+    ctx.fillStyle='#0f7a45'; ctx.font=F(20,'700'); ctx.fillText('· 没有错词，继续保持！', PAD, y); y+=34;
+  }
+  y+=22;
+  // 建议
+  ctx.fillStyle='#2b2340'; ctx.font=F(24,'900'); ctx.fillText('💡 给家长的建议', PAD, y);
+  y+=22;
+  const adviceLines=wrap(rp.advice, W-2*PAD-44, F(20,'700'));
+  const bh2=adviceLines.length*32+30;
+  rrect(PAD, y, W-2*PAD, bh2, 16); ctx.fillStyle='#fff8e6'; ctx.fill();
+  ctx.fillStyle='#7a4a00'; ctx.font=F(20,'700');
+  adviceLines.forEach((ln,i)=>{ ctx.fillText(ln, PAD+22, y+32+i*32); });
+  y+=bh2+34;
+  // 页脚
+  ctx.fillStyle='#9a92aa'; ctx.font=F(17,'700');
+  ctx.fillText('数据来自本机离线存档 · 未上传服务器', PAD, y);
+  const t=new Date(rp.at), p2=n=>String(n).padStart(2,'0');
+  const stamp=(t.getMonth()+1)+'月'+t.getDate()+'日 '+p2(t.getHours())+':'+p2(t.getMinutes());
+  ctx.textAlign='right'; ctx.fillText('生成于 '+stamp, W-PAD, y); ctx.textAlign='left';
+  return y+40;
 }
 
 /* ---------------- 运行环境识别（微信/QQ 内置浏览器、本地文件） ---------------- */
@@ -7870,6 +8166,7 @@ function judge(correct, customFb){
   const q=run.qs[run.idx];
   const fb=document.getElementById('fb');
   recordResult(q.itemId, correct, {tag:q.tag, ans:q.ans});
+  trackAnswer(correct, q.itemId);   // 周报按天累计答题数 / 正确数 / 练过的词
   if(correct){
     run.score++;
     run.combo=(run.combo||0)+1;
@@ -8218,6 +8515,14 @@ function finishRun(){
   }
   state.coins += gained;
   state.lastPlay=Date.now();
+  // 周报：记录当天获得金币与本次闯关成绩
+  trackCoins(gained);
+  if(isUnit){
+    const u=GAME_DATA[p];
+    trackUnit((u&&u.title)||('第'+(p+1)+'关'), acc, stars);
+  } else if(isLab){
+    trackUnit(run.source.lvName||'语法/写作', acc, stars);
+  }
   saveState();
 
   // 过场动画：还活着就滚到终点线，再弹结算
