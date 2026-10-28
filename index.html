@@ -50,6 +50,18 @@
 
   #studyList.hidezh .m{filter:blur(6px); transition:filter .15s;}
   #studyList.hidezh .wordcard.revealed .m{filter:none;}
+  /* 结算页错词巩固卡 */
+  .ww-title{font-size:13px; font-weight:900; color:var(--ink); margin:12px 2px 6px;}
+  .ww-card{background:#fff; border-radius:16px; padding:10px 12px; margin:8px 0; box-shadow:var(--shadow);
+    border-left:6px solid var(--orange);}
+  .ww-card.done{border-left-color:var(--good); background:#f3fff9;}
+  .ww-line{display:flex; align-items:center; gap:8px;}
+  .ww-word{font-size:20px; font-weight:900; flex:1;}
+  .ww-opts{display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px;}
+  .ww-opt{border:none; border-radius:12px; padding:9px 6px; font-size:13.5px; font-weight:800;
+    background:#f4f0ff; color:var(--ink); font-family:inherit; cursor:pointer; touch-action:manipulation;}
+  .ww-opt.ok{background:#d4f7e4; color:#0f7a45;}
+  .ww-opt.no{background:#ffe0dd; color:#b3261e;}
   /* Egg */
   .egg-wrap{display:flex; justify-content:center; align-items:center; margin:6px 0 2px;}
   .egg{width:160px; height:190px; animation:bob 1.6s ease-in-out infinite; cursor:pointer;}
@@ -718,6 +730,7 @@
     <div class="topbar"><button class="back-btn" id="resultTopBack" onclick="goMap()">← 地图</button></div>
     <div class="egg-wrap"><div class="egg" id="result-egg" onclick="pokeEggy(this)"></div></div>
     <div class="result-card" id="resultCard"></div>
+    <div id="wrongWordBox" style="display:none;"></div>
     <div class="row" style="margin-top:12px;">
       <button class="btn green" id="retryBtn" onclick="retry()">🔄 再冲一次</button>
       <button class="btn blue" id="resultBackBtn" onclick="goMap()">🗺️ 回赛道地图</button>
@@ -8269,20 +8282,106 @@ function finishRun(){
       retryBtn.textContent='🔄 再冲一次';
       retryBtn.onclick=retry;
     }
+    const backTo=()=>{
+      if(!resultGateOk()) return;
+      if(isLab) openLab(run.source.track); else goMap();
+    };
     const bb=document.getElementById('resultBackBtn');
     if(bb){
       bb.textContent=isLab?'🗂️ 回关卡列表':'🗺️ 回赛道地图';
-      bb.onclick=isLab?()=>openLab(run.source.track):goMap;
+      bb.onclick=backTo;
     }
     const tb=document.getElementById('resultTopBack');
     if(tb){
       tb.textContent=isLab?'← 关卡':'← 地图';
-      tb.onclick=isLab?()=>openLab(run.source.track):goMap;
+      tb.onclick=backTo;
     }
+    renderWrongWords();
     if(stars===3||run.ko||repairPass||repairCleared) confetti();
     refreshHud();
   };
   if(rollToEnd) setTimeout(paintResult,620); else paintResult();
+}
+/* ---------- 结算页：本关错词巩固（最多 3 个，选对中文才算过关） ---------- */
+let wwState=null;
+function pickWrongWords(){
+  const ids=(run&&run.wrongIds)||[];
+  let items=ids.map(itemById).filter(i=>i&&i.type==='vocab');
+  items=items.filter((v,i)=>items.findIndex(x=>x.word===v.word)===i);
+  if(items.length<3){
+    const extra=Object.keys(state.wrong||{}).map(itemById)
+      .filter(i=>i&&i.type==='vocab'&&items.indexOf(i)<0);
+    items=items.concat(extra.filter((v,i,arr)=>arr.findIndex(x=>x.word===v.word)===i));
+  }
+  return items.slice(0,3);
+}
+function renderWrongWords(){
+  const box=document.getElementById('wrongWordBox');
+  if(!box) return;
+  const items=pickWrongWords();
+  if(!items.length){ box.style.display='none'; box.innerHTML=''; wwState=null; return; }
+  const allMean=ITEMS.filter(i=>i.type==='vocab').map(i=>i.meaning);
+  wwState={total:items.length, done:0, items:items.map(it=>{
+    const body=it.audio||it.word;
+    return { word:it.word, cue:body, meaning:it.meaning,
+      opts:shuffle([it.meaning].concat(pickDistractors(allMean, it.meaning, 3))), done:false };
+  })};
+  box.style.display='';
+  box.innerHTML='<div class="ww-title"></div>'+wwState.items.map((st,i)=>
+    '<div class="ww-card" id="wwc'+i+'">'+
+      '<div class="ww-line">'+
+        '<button class="btn small ghost" style="margin:0;width:auto;padding:8px 12px;" onclick="speak('+escapeHtml(JSON.stringify(st.cue))+',null,this)">🔊</button>'+
+        '<div class="ww-word">'+escapeHtml(st.word)+'</div>'+
+      '</div>'+
+      '<div class="ww-opts">'+st.opts.map(o=>
+        '<button class="ww-opt" data-i="'+i+'" data-t="'+escapeHtml(o)+'" onclick="wwPick(this)">'+escapeHtml(o)+'</button>'
+      ).join('')+'</div>'+
+    '</div>').join('');
+  updateWwTitle();
+  setResultGate(true);
+}
+function updateWwTitle(){
+  const t=document.querySelector('#wrongWordBox .ww-title');
+  if(t&&wwState) t.innerHTML='🔁 错词巩固 '+wwState.done+'/'+wwState.total+' · 选出中文意思才算过关';
+}
+function wwPick(btn){
+  if(!wwState || !btn) return;
+  const i=+btn.dataset.i, st=wwState.items[i], card=document.getElementById('wwc'+i);
+  if(!st || st.done) return;
+  st.done=true; wwState.done++;
+  if(card) card.classList.add('done');
+  if(btn.dataset.t===st.meaning){
+    btn.classList.add('ok'); soundGood();
+    speak(st.cue);
+  } else {
+    btn.classList.add('no');
+    if(card) card.querySelectorAll('.ww-opt').forEach(b=>{ if(b.dataset.t===st.meaning) b.classList.add('ok'); });
+    toast('记住：'+st.word+' = '+st.meaning);
+    speak(st.cue);
+  }
+  updateWwTitle();
+  if(wwState.done>=wwState.total){
+    setResultGate(false);
+    setTimeout(()=>toast('✅ 错词巩固完成，可以继续啦！'),300);
+  }
+}
+function setResultGate(locked){
+  ['resultBackBtn','resultTopBack'].forEach(id=>{
+    const b=document.getElementById(id);
+    if(!b) return;
+    b.classList.toggle('locked-btn', !!locked);
+    if(id==='resultBackBtn'){
+      const isLab=!!(run&&run.source&&(run.source.kind==='gram'||run.source.kind==='write'));
+      b.textContent = locked ? '🔒 先完成错词巩固' : (isLab?'🗂️ 回关卡列表':'🗺️ 回赛道地图');
+    }
+  });
+}
+function resultGateOk(){
+  if(wwState && wwState.done<wwState.total){
+    toast('先把 '+wwState.total+' 个错词的中文意思选出来');
+    return false;
+  }
+  return true;
 }
 function goRepair(){
   if(!state.repair){ toast('没有待回炉的关卡'); goMap(); return; }
